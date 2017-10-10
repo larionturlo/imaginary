@@ -33,29 +33,6 @@ func TestReadParams(t *testing.T) {
 		t.Error("Invalid params")
 	}
 }
-func TestReadParamsFromJSON(t *testing.T) {
-	q := `{"width": "100",
-		"height": "80",
-		"noreplicate": "1",
-		"opacity": "0.2",
-		"text": "hello",
-		"background": "255,10,20"}`
-
-	params := readParamsFromJSON(q)
-
-	assert := params.Width == 100 &&
-		params.Height == 80 &&
-		params.NoReplicate == true &&
-		params.Opacity == 0.2 &&
-		params.Text == "hello" &&
-		params.Background[0] == 255 &&
-		params.Background[1] == 10 &&
-		params.Background[2] == 20
-
-	if assert == false {
-		t.Error("Invalid params")
-	}
-}
 
 func TestParseParam(t *testing.T) {
 	intCases := []struct {
