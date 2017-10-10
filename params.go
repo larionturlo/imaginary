@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"net/url"
 	"strconv"
@@ -52,6 +53,22 @@ func readParams(query url.Values) ImageOptions {
 
 	for key, kind := range allowedParams {
 		param := query.Get(key)
+		params[key] = parseParam(param, kind)
+	}
+
+	return mapImageParams(params)
+}
+
+func readParamsFromJSON(rawData string) ImageOptions {
+	params := make(map[string]interface{})
+	data := make(map[string]string)
+
+	if error := json.Unmarshal([]byte(rawData), &data); error != nil {
+		fmt.Println(error)
+	}
+
+	for key, kind := range allowedParams {
+		param := data[key]
 		params[key] = parseParam(param, kind)
 	}
 
