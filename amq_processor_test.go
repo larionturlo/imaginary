@@ -97,3 +97,19 @@ func TestRunImageProcess(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestRunProcess(t *testing.T) {
+	taskData := `{
+		"id":"000000",
+		"url":"https://image.63pokupki.ru/images/0f/0f020c12f8825.jpg",
+		"operation": "resize",
+		"params":{
+			"width": "300",
+			"height": "300",
+			"thumb_width": "150",
+			"thumb_height": "150"
+		}
+	}`
+
+	RunProcess(taskData)
+}

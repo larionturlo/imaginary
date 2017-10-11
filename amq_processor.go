@@ -12,11 +12,11 @@ import (
 	"os"
 )
 
-const SpecialOp = "double_resize_adaptive"
-
 type ImageProcessConfig struct {
-	ImageDir string
-	ThumbDir string
+	ImageLocalRoot string
+	ImageDir       string
+	ThumbDir       string
+	ImageHost      string
 }
 
 type Task struct {
@@ -30,7 +30,6 @@ type ResultProcessing struct {
 	ID        string `json:"id"`
 	Operation string `json:"operation"`
 	URL       string `json:"url"`
-	Error     string `json:"error"`
 }
 
 var ImageOperations = map[string]Operation{
@@ -51,10 +50,33 @@ var ImageOperations = map[string]Operation{
 	"pipeline":  Pipeline,
 }
 
-func RunProcess(taskData string) ResultProcessing {
-	task, errTask := readTask(taskData)
+func RunProcess(taskData string) {
+	settings := ImageProcessConfig{
+		ImageLocalRoot: "./fixtures/",
+		ImageDir:       "image/",
+		ThumbDir:       "thumb/",
+		ImageHost:      "image.63pokupki.ru",
+	}
+	task, _ := readTask(taskData)
 
-	return ResultProcessing{task.ID, task.Operation, "new.example.com", errTask.Error()}
+	buf, errRequest := requestImage("GET", task.SourceURL)
+	if errRequest != nil {
+		return
+	}
+
+	dir := settings.ImageLocalRoot + settings.ImageDir
+	opts := SetParamsRelatedImage(buf, task.Params)
+
+	ImageProcess(buf, task.Operation, opts, dir)
+
+	thumbDir := settings.ImageLocalRoot + settings.ThumbDir
+	thumbParams := make(ParamsJSONScheme)
+	thumbParams["width"] = task.Params["thumb_width"]
+	thumbParams["height"] = task.Params["thumb_height"]
+	thumbOpts := SetParamsRelatedImage(buf, thumbParams)
+
+	ImageProcess(buf, task.Operation, thumbOpts, thumbDir)
+
 }
 
 func RunImageProcess(sourceURL, operation string, params ParamsJSONScheme) error {

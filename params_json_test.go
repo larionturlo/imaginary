@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"testing"
 )
 
@@ -32,8 +33,8 @@ func TestReadParamsFromJSON(t *testing.T) {
 
 	data := make(ParamsJSONScheme)
 
-	if error := json.Unmarshal([]byte(q), &data); error != nil {
-		fmt.Println(error)
+	if err := json.Unmarshal([]byte(q), &data); err != nil {
+		fmt.Println(err)
 	}
 
 	params := readParamsFromJSON(data)
@@ -51,5 +52,29 @@ func TestReadParamsFromJSON(t *testing.T) {
 
 	if assert == false {
 		t.Error("Invalid params")
+	}
+}
+
+func TestSetParamsRelatedImage(t *testing.T) {
+	rawData := []byte(`{
+		"width": "300",
+		"height": "300"
+		}`)
+	data := make(ParamsJSONScheme)
+
+	if err := json.Unmarshal(rawData, &data); err != nil {
+		fmt.Println(err)
+	}
+
+	buf, _ := ioutil.ReadAll(readFile("imaginary.jpg"))
+
+	params := SetParamsRelatedImage(buf, data)
+
+	assert := params.Width == 0 &&
+		params.Height == 300 &&
+		params.NoCrop == true
+
+	if assert == false {
+		t.Errorf("Invalid params %d / %d", params.Width, params.Height)
 	}
 }
