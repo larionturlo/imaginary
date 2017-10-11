@@ -1,13 +1,12 @@
 package main
 
-import (
-	"encoding/json"
-)
+import "encoding/json"
 
 type Task struct {
-	ID        string                      `json:"id"`
-	Operation string                      `json:"operation"`
-	Params    map[string]*json.RawMessage `json:"params"`
+	ID        string           `json:"id"`
+	SourceURL string           `json:"url"`
+	Operation string           `json:"operation"`
+	Params    ParamsJSONScheme `json:"params"`
 }
 
 type ResultProcessing struct {
@@ -16,7 +15,7 @@ type ResultProcessing struct {
 	URL       string `json:"url"`
 }
 
-const ImageOperations = map[string]Operation{
+var ImageOperations = map[string]Operation{
 	"resize":    Resize,
 	"enlarge":   Enlarge,
 	"extract":   Extract,
@@ -34,6 +33,27 @@ const ImageOperations = map[string]Operation{
 	"pipeline":  Pipeline,
 }
 
-func RunProcessor(task Task) ResultProcessing {
-	return ResultProcessing{"000000", task.Operation, "example.com"}
+// func RunProcess(taskData string) ResultProcessing {
+// 	task := readTask(taskData)
+// 	return ResultProcessing{task.ID, task.Operation, "new.example.com"}
+// }
+
+// func RunImageProcess(operation string, params ParamsJSONScheme) {
+
+// 	opts := readParamsFromJSON(params)
+
+// 	o := Operation(ImageOperations[operation])
+
+// 	imgSource = NewHttpImageSource()
+
+// 	image, err := o.Run(buf, opts)
+// 	if err != nil {
+// 		ErrorReply(r, w, NewError("Error while processing the image: "+err.Error(), BadRequest), o)
+// 		return
+// 	}
+// }
+func readTask(taskData string) (Task, error) {
+	task := Task{}
+	error := json.Unmarshal([]byte(taskData), &task)
+	return task, error
 }

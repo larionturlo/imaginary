@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -28,7 +30,13 @@ func TestReadParamsFromJSON(t *testing.T) {
 		]
 	}`
 
-	params := readParamsFromJSON(q)
+	data := make(ParamsJSONScheme)
+
+	if error := json.Unmarshal([]byte(q), &data); error != nil {
+		fmt.Println(error)
+	}
+
+	params := readParamsFromJSON(data)
 
 	assert := params.Width == 100 &&
 		params.Height == 80 &&
