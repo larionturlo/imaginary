@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,6 +32,7 @@ var OperationsMap = map[string]Operation{
 type Image struct {
 	Body []byte
 	Mime string
+	Hash [16]byte
 }
 
 // Operation implements an image transformation runnable interface
@@ -303,12 +305,12 @@ func Process(buf []byte, opts bimg.Options) (out Image, err error) {
 			out = Image{}
 		}
 	}()
-
+	hash := md5.Sum(buf)
 	buf, err = bimg.Resize(buf, opts)
 	if err != nil {
 		return Image{}, err
 	}
 
 	mime := GetImageMimeType(bimg.DetermineImageType(buf))
-	return Image{Body: buf, Mime: mime}, nil
+	return Image{Body: buf, Mime: mime, Hash: hash}, nil
 }

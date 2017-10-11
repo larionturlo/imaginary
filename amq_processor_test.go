@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"testing"
 )
 
@@ -56,5 +57,43 @@ func TestReadTask(t *testing.T) {
 
 	if assert == false {
 		t.Error("Invalid params")
+	}
+}
+
+func TestRequestImageAndSave(t *testing.T) {
+	url := `https://image.63pokupki.ru/images/0f/0f020c12f8825.jpg`
+	method := "GET"
+	buf, errRequest := requestImage(method, url)
+	if errRequest != nil {
+		t.Errorf("Request error: %v", errRequest)
+	}
+
+	img := Image{Body: buf, Mime: "image/jpeg", Hash: md5.Sum(buf)}
+	errSave := saveImageToFile(img, "./fixtures/")
+	if errSave != nil {
+		t.Errorf("Save error: %v", errSave)
+	}
+}
+
+func TestRunImageProcess(t *testing.T) {
+	taskData := `{
+		"id":"000000",
+		"url":"https://image.63pokupki.ru/images/0f/0f020c12f8825.jpg",
+		"operation": "smartcrop",
+		"params":{
+			"width": "100",
+			"height": "100",
+			"nocrop": "1"
+		}
+	}`
+
+	task, errReadTask := readTask(taskData)
+	if errReadTask != nil {
+		t.Error(errReadTask)
+	}
+
+	err := RunImageProcess(task.SourceURL, task.Operation, task.Params)
+	if err != nil {
+		t.Error(err)
 	}
 }

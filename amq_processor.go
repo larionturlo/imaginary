@@ -1,6 +1,23 @@
 package main
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"image"
+	"image/jpeg"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
+)
+
+const SpecialOp = "double_resize_adaptive"
+
+type ImageProcessConfig struct {
+	ImageDir string
+	ThumbDir string
+}
 
 type Task struct {
 	ID        string           `json:"id"`
@@ -13,6 +30,7 @@ type ResultProcessing struct {
 	ID        string `json:"id"`
 	Operation string `json:"operation"`
 	URL       string `json:"url"`
+	Error     string `json:"error"`
 }
 
 var ImageOperations = map[string]Operation{
@@ -33,25 +51,86 @@ var ImageOperations = map[string]Operation{
 	"pipeline":  Pipeline,
 }
 
-// func RunProcess(taskData string) ResultProcessing {
-// 	task := readTask(taskData)
-// 	return ResultProcessing{task.ID, task.Operation, "new.example.com"}
-// }
+func RunProcess(taskData string) ResultProcessing {
+	task, errTask := readTask(taskData)
 
-// func RunImageProcess(operation string, params ParamsJSONScheme) {
+	return ResultProcessing{task.ID, task.Operation, "new.example.com", errTask.Error()}
+}
 
-// 	opts := readParamsFromJSON(params)
+func RunImageProcess(sourceURL, operation string, params ParamsJSONScheme) error {
 
-// 	o := Operation(ImageOperations[operation])
+	buf, errRequest := requestImage("GET", sourceURL)
+	if errRequest != nil {
+		return errRequest
+	}
 
-// 	imgSource = NewHttpImageSource()
+	opts := readParamsFromJSON(params)
 
-// 	image, err := o.Run(buf, opts)
-// 	if err != nil {
-// 		ErrorReply(r, w, NewError("Error while processing the image: "+err.Error(), BadRequest), o)
-// 		return
-// 	}
-// }
+	return ImageProcess(buf, operation, opts, "./fixtures/")
+}
+
+func ImageProcess(buf []byte, operation string, opts ImageOptions, dir string) error {
+
+	o := Operation(ImageOperations[operation])
+
+	image, errProcess := o.Run(buf, opts)
+
+	if errProcess != nil {
+		return errProcess
+	}
+	return saveImageToFile(image, dir)
+}
+
+func saveImageToFile(img Image, imgDir string) error {
+	im, _, errDecode := image.Decode(bytes.NewReader(img.Body))
+	if errDecode != nil {
+		return fmt.Errorf("Error image decode: %v", errDecode)
+	}
+	hash := fmt.Sprintf("%x", img.Hash)
+	dir := imgDir + hash[:2]
+
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		os.Mkdir(dir, 0775)
+	}
+
+	toimg, errCreateFile := os.Create(dir + "/" + hash + ".jpg")
+	if errCreateFile != nil {
+		return fmt.Errorf("Error create new file: %v", errCreateFile)
+	}
+	defer toimg.Close()
+	err := jpeg.Encode(toimg, im, &jpeg.Options{jpeg.DefaultQuality})
+	if err != nil {
+		return fmt.Errorf("Error image jpeg encode: %v", err)
+	}
+	return nil
+}
+
+func requestImage(method, sourceURL string) ([]byte, error) {
+	url, errParse := url.Parse(sourceURL)
+	if errParse != nil {
+		return nil, fmt.Errorf("Error parse url: %v", errParse)
+	}
+
+	req, _ := http.NewRequest(method, url.String(), nil)
+	req.Header.Set("User-Agent", "imaginary/"+Version)
+	req.URL = url
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Error downloading image: %v", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("Error downloading image: (status=%d) (url=%s)", res.StatusCode, req.URL.String())
+	}
+
+	// Read the body
+	buf, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create image from response body: %s (url=%s)", req.URL.String(), err)
+	}
+	return buf, nil
+}
+
 func readTask(taskData string) (Task, error) {
 	task := Task{}
 	error := json.Unmarshal([]byte(taskData), &task)
