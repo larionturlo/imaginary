@@ -173,6 +173,8 @@ func main() {
 	// Load image source providers
 	LoadSources(opts)
 
+	// start amqp
+	AmqpRun()
 	// Start the server
 	err := Server(opts)
 	if err != nil {

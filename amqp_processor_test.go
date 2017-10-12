@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/md5"
+	"reflect"
 	"testing"
 )
 
@@ -99,7 +100,7 @@ func TestRunImageProcess(t *testing.T) {
 }
 
 func TestRunProcess(t *testing.T) {
-	taskData := `{
+	taskDataGood := `{
 		"id":"000000",
 		"url":"https://image.63pokupki.ru/images/0f/0f020c12f8825.jpg",
 		"operation": "resize",
@@ -110,6 +111,44 @@ func TestRunProcess(t *testing.T) {
 			"thumb_height": "150"
 		}
 	}`
+	taskGood, _ := readTask(taskDataGood)
 
-	RunProcess(taskData)
+	type args struct {
+		taskData Task
+	}
+	tests := []struct {
+		name  string
+		args  args
+		want  ImageResultQueueMSG
+		want1 error
+	}{
+		{
+			name: "taskDataGood",
+			args: args{taskGood},
+			want: ImageResultQueueMSG{
+				ID:        taskGood.ID,
+				Operation: taskGood.Operation,
+			},
+			want1: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := RunProcess(tt.args.taskData)
+
+			if reflect.ValueOf(got).Type() != reflect.ValueOf(tt.want).Type() {
+				t.Errorf("RunProcess() got1 = %v, want %v", reflect.ValueOf(got1).Type(), reflect.ValueOf(tt.want1).Type())
+			}
+			if got.ID != tt.want.ID {
+				t.Errorf("RunProcess() got1 = %v, want %v", got.ID, tt.want.ID)
+			}
+			if got.Operation != tt.want.Operation {
+				t.Errorf("RunProcess() got1 = %v, want %v", got.Operation, tt.want.Operation)
+			}
+
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("RunProcess() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

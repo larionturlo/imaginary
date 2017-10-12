@@ -19,17 +19,17 @@ type ImageProcessConfig struct {
 	ImageHost      string
 }
 
+type ImageResultQueueMSG struct {
+	ID        string `json:"id"`
+	Operation string `json:"operation"`
+	URL       string `json:"url"`
+}
+
 type Task struct {
 	ID        string           `json:"id"`
 	SourceURL string           `json:"url"`
 	Operation string           `json:"operation"`
 	Params    ParamsJSONScheme `json:"params"`
-}
-
-type ResultProcessing struct {
-	ID        string `json:"id"`
-	Operation string `json:"operation"`
-	URL       string `json:"url"`
 }
 
 var ImageOperations = map[string]Operation{
@@ -50,18 +50,17 @@ var ImageOperations = map[string]Operation{
 	"pipeline":  Pipeline,
 }
 
-func RunProcess(taskData string) {
+func RunProcess(task Task) (ImageResultQueueMSG, error) {
 	settings := ImageProcessConfig{
 		ImageLocalRoot: "./fixtures/",
 		ImageDir:       "image/",
 		ThumbDir:       "thumb/",
 		ImageHost:      "image.63pokupki.ru",
 	}
-	task, _ := readTask(taskData)
 
 	buf, errRequest := requestImage("GET", task.SourceURL)
 	if errRequest != nil {
-		return
+		return ImageResultQueueMSG{}, errRequest
 	}
 
 	dir := settings.ImageLocalRoot + settings.ImageDir
@@ -77,6 +76,7 @@ func RunProcess(taskData string) {
 
 	ImageProcess(buf, task.Operation, thumbOpts, thumbDir)
 
+	return ImageResultQueueMSG{task.ID, task.Operation, "test"}, nil
 }
 
 func RunImageProcess(sourceURL, operation string, params ParamsJSONScheme) error {
