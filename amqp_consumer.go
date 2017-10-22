@@ -40,8 +40,8 @@ func startAMQPConsumer() {
 
 	go func() {
 		for d := range msgs {
-			body := string(d.Body)
-			task, error := readTask(body)
+
+			task, error := readTask(d.Body)
 			imgResult, _ := RunProcess(task)
 
 			if error != nil {

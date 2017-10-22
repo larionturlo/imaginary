@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/md5"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -33,7 +34,7 @@ func TestReadTask(t *testing.T) {
 		}
 	}`
 
-	task, error := readTask(taskData)
+	task, error := readTask([]byte(taskData))
 	if error != nil {
 		t.Error(error)
 	}
@@ -69,33 +70,11 @@ func TestRequestImageAndSave(t *testing.T) {
 		t.Errorf("Request error: %v", errRequest)
 	}
 
-	img := Image{Body: buf, Mime: "image/jpeg", Hash: md5.Sum(buf)}
-	errSave := saveImageToFile(img, "./fixtures/")
+	img := Image{Body: buf, Mime: "image/jpeg"}
+	hash := fmt.Sprintf("%x", md5.Sum(buf))
+	errSave := saveImageToFile(img, "./fixtures/", hash)
 	if errSave != nil {
 		t.Errorf("Save error: %v", errSave)
-	}
-}
-
-func TestRunImageProcess(t *testing.T) {
-	taskData := `{
-		"id":"000000",
-		"url":"https://image.63pokupki.ru/images/0f/0f020c12f8825.jpg",
-		"operation": "smartcrop",
-		"params":{
-			"width": "100",
-			"height": "100",
-			"nocrop": "1"
-		}
-	}`
-
-	task, errReadTask := readTask(taskData)
-	if errReadTask != nil {
-		t.Error(errReadTask)
-	}
-
-	err := RunImageProcess(task.SourceURL, task.Operation, task.Params)
-	if err != nil {
-		t.Error(err)
 	}
 }
 
@@ -111,7 +90,7 @@ func TestRunProcess(t *testing.T) {
 			"thumb_height": "150"
 		}
 	}`
-	taskGood, _ := readTask(taskDataGood)
+	taskGood, _ := readTask([]byte(taskDataGood))
 
 	type args struct {
 		taskData Task
@@ -148,6 +127,40 @@ func TestRunProcess(t *testing.T) {
 
 			if !reflect.DeepEqual(got1, tt.want1) {
 				t.Errorf("RunProcess() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_requestImage(t *testing.T) {
+	url := `https://image.63pokupki.ru/images/0f/0f020c12f8825.jpg`
+	method := "GET"
+	type args struct {
+		method    string
+		sourceURL string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []byte
+		wantErr bool
+	}{
+		{
+			name:    "loadImg",
+			args:    args{method, url},
+			want:    []byte("123"),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := requestImage(tt.args.method, tt.args.sourceURL)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("requestImage() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if reflect.ValueOf(got).Type() != reflect.ValueOf(tt.want).Type() {
+				t.Errorf("requestImage() = %v, want %v", got, tt.want)
 			}
 		})
 	}

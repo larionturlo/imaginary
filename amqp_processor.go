@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -22,7 +23,7 @@ type ImageProcessConfig struct {
 type ImageResultQueueMSG struct {
 	ID        string `json:"id"`
 	Operation string `json:"operation"`
-	URL       string `json:"url"`
+	Hash      string `json:"hash"`
 }
 
 type Task struct {
@@ -63,35 +64,24 @@ func RunProcess(task Task) (ImageResultQueueMSG, error) {
 		return ImageResultQueueMSG{}, errRequest
 	}
 
-	dir := settings.ImageLocalRoot + settings.ImageDir
 	opts := SetParamsRelatedImage(buf, task.Params)
+	hash := fmt.Sprintf("%x", md5.Sum(buf))
+	dir := settings.ImageLocalRoot + settings.ImageDir + hash[:2]
 
-	ImageProcess(buf, task.Operation, opts, dir)
+	imageProcess(buf, task.Operation, opts, dir, hash)
 
-	thumbDir := settings.ImageLocalRoot + settings.ThumbDir
+	thumbDir := settings.ImageLocalRoot + settings.ThumbDir + hash[:2]
 	thumbParams := make(ParamsJSONScheme)
 	thumbParams["width"] = task.Params["thumb_width"]
 	thumbParams["height"] = task.Params["thumb_height"]
 	thumbOpts := SetParamsRelatedImage(buf, thumbParams)
 
-	ImageProcess(buf, task.Operation, thumbOpts, thumbDir)
+	imageProcess(buf, task.Operation, thumbOpts, thumbDir, hash)
 
-	return ImageResultQueueMSG{task.ID, task.Operation, "test"}, nil
+	return ImageResultQueueMSG{task.ID, task.Operation, hash}, nil
 }
 
-func RunImageProcess(sourceURL, operation string, params ParamsJSONScheme) error {
-
-	buf, errRequest := requestImage("GET", sourceURL)
-	if errRequest != nil {
-		return errRequest
-	}
-
-	opts := readParamsFromJSON(params)
-
-	return ImageProcess(buf, operation, opts, "./fixtures/")
-}
-
-func ImageProcess(buf []byte, operation string, opts ImageOptions, dir string) error {
+func imageProcess(buf []byte, operation string, opts ImageOptions, dir, hash string) error {
 
 	o := Operation(ImageOperations[operation])
 
@@ -100,22 +90,20 @@ func ImageProcess(buf []byte, operation string, opts ImageOptions, dir string) e
 	if errProcess != nil {
 		return errProcess
 	}
-	return saveImageToFile(image, dir)
+	return saveImageToFile(image, dir, hash)
 }
 
-func saveImageToFile(img Image, imgDir string) error {
+func saveImageToFile(img Image, imgDir, hash string) error {
 	im, _, errDecode := image.Decode(bytes.NewReader(img.Body))
 	if errDecode != nil {
 		return fmt.Errorf("Error image decode: %v", errDecode)
 	}
-	hash := fmt.Sprintf("%x", img.Hash)
-	dir := imgDir + hash[:2]
 
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		os.Mkdir(dir, 0775)
+	if _, err := os.Stat(imgDir); os.IsNotExist(err) {
+		os.Mkdir(imgDir, 0775)
 	}
 
-	toimg, errCreateFile := os.Create(dir + "/" + hash + ".jpg")
+	toimg, errCreateFile := os.Create(imgDir + "/" + hash + ".jpg")
 	if errCreateFile != nil {
 		return fmt.Errorf("Error create new file: %v", errCreateFile)
 	}
@@ -153,8 +141,8 @@ func requestImage(method, sourceURL string) ([]byte, error) {
 	return buf, nil
 }
 
-func readTask(taskData string) (Task, error) {
+func readTask(taskData []byte) (Task, error) {
 	task := Task{}
-	error := json.Unmarshal([]byte(taskData), &task)
+	error := json.Unmarshal(taskData, &task)
 	return task, error
 }

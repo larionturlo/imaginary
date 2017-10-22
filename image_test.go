@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/md5"
 	"io/ioutil"
 	"testing"
 )
@@ -19,9 +18,6 @@ func TestImageResize(t *testing.T) {
 	}
 	if assertSize(img.Body, opts.Width, opts.Height) != nil {
 		t.Errorf("Invalid image size, expected: %dx%d", opts.Width, opts.Height)
-	}
-	if img.Hash != md5.Sum(buf) {
-		t.Error("Invalid image hash")
 	}
 }
 
